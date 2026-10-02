@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="src/nonebot_plugin_usoparser/render/templates/ukp.png" width="160" alt="UsoParser / UsotsukiKaze 标识">
+  <img src="https://raw.githubusercontent.com/UsotsukiKaze/nonebot-plugin-usoparser/main/src/nonebot_plugin_usoparser/render/templates/ukp.png" width="160" alt="UsoParser / UsotsukiKaze 标识">
 
 # UsoParser
 
@@ -32,11 +32,11 @@ UsoParser 基于 [nonebot-plugin-parser-lite](https://github.com/sokoko-org/none
 
 | [完美世界竞技平台图文](https://news.wmpvp.com/news.html?id=304175&gameTypeStr=2) | [B 站视频](https://www.bilibili.com/video/BV1NNh86gEMM/) |
 |:--:|:--:|
-| <img src="docs/images/wmpvp-news-light.png" alt="完美世界竞技平台图文卡片" width="410"> | <img src="docs/images/bilibili-video-light.png" alt="B 站视频解析卡片" width="410"> |
+| <img src="https://raw.githubusercontent.com/UsotsukiKaze/nonebot-plugin-usoparser/main/docs/images/wmpvp-news-light.png" alt="完美世界竞技平台图文卡片" width="410"> | <img src="https://raw.githubusercontent.com/UsotsukiKaze/nonebot-plugin-usoparser/main/docs/images/bilibili-video-light.png" alt="B 站视频解析卡片" width="410"> |
 
 | [B 站直播](https://live.bilibili.com/21623527) | 音乐播放器 · 太陽 |
 |:--:|:--:|
-| <img src="docs/images/bilibili-live-light.png" alt="B 站直播卡片：左封面、右侧当前画面与直播信息" width="410"> | <img src="docs/images/music-player.webp" alt="太陽音乐播放器卡片示例" width="410"> |
+| <img src="https://raw.githubusercontent.com/UsotsukiKaze/nonebot-plugin-usoparser/main/docs/images/bilibili-live-light.png" alt="B 站直播卡片：左封面、右侧当前画面与直播信息" width="410"> | <img src="https://raw.githubusercontent.com/UsotsukiKaze/nonebot-plugin-usoparser/main/docs/images/music-player.webp" alt="太陽音乐播放器卡片示例" width="410"> |
 
 ## 支持的平台
 
@@ -134,7 +134,7 @@ PLITE_MAX_COMMENTS=5
 | `PLITE_MAX_COMMENTS` | `5` | 评论数量上限 |
 | `PLITE_RENDER_THEME` | `default` | 使用的卡片主题 ID |
 
-完整字段及校验规则见 [`config.py`](src/nonebot_plugin_usoparser/config.py)。高画质、部分评论和音乐源文件可能需要平台登录状态或可用的第三方接口；请遵守平台服务条款和版权要求。
+完整字段及校验规则见 [`config.py`](https://github.com/UsotsukiKaze/nonebot-plugin-usoparser/blob/main/src/nonebot_plugin_usoparser/config.py)。高画质、部分评论和音乐源文件可能需要平台登录状态或可用的第三方接口；请遵守平台服务条款和版权要求。
 
 ## 命令与触发
 
