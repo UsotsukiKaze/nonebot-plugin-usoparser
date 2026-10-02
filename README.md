@@ -91,7 +91,7 @@ UsoParser 基于 [nonebot-plugin-parser-lite](https://github.com/sokoko-org/none
 nb plugin install nonebot-plugin-usoparser
 ```
 
-当前版本尚未发布到 PyPI；在本仓库目录执行：
+如果 PyPI 尚未收录本插件，或需要安装当前源码，可在本仓库目录执行：
 
 ```bash
 python -m pip install -e .
