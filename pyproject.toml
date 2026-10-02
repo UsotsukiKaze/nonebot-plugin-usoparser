@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nonebot-plugin-usoparser"
+version = "0.1.0"
+description = "NoneBot2 多平台媒体链接解析与卡片渲染插件"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-only"
+authors = [{ name = "UsotsukiKaze" }]
+keywords = ["nonebot2", "parser", "social-media", "bilibili", "douyin"]
+classifiers = [
+  "Framework :: AsyncIO",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Communications :: Chat",
+]
+dependencies = [
+  "nonebot2>=2.4.3,<3",
+  "nonebot-plugin-alconna>=0.59.4,<1",
+  "nonebot-plugin-uninfo>=0.10.1,<1",
+  "nonebot-plugin-apscheduler>=0.5,<1",
+  "nonebot-plugin-localstore>=0.7.4,<1",
+  "nonebot-plugin-htmlrender>=0.8,<1",
+  "anyio>=4,<5",
+  "aiofiles>=23.2.1",
+  "beautifulsoup4>=4.12,<5",
+  "cryptography>=45",
+  "curl-cffi>=0.15,<1",
+  "httpx[http2]>=0.20,<1",
+  "jinja2>=3.1,<4",
+  "json-repair>=0.58,<1",
+  "msgspec>=0.20,<1",
+  "pillow>=10,<13",
+  "protobuf>=7,<8",
+  "puremagic>=1.30",
+  "pydantic>=2,<3",
+  "qrcode>=8,<9",
+  "rich>=15,<16",
+  "tarina>=0.7,<1",
+  "ujson>=5,<6",
+]
+
+[project.urls]
+Homepage = "https://github.com/UsotsukiKaze/nonebot-plugin-usoparser"
+Repository = "https://github.com/UsotsukiKaze/nonebot-plugin-usoparser"
+Issues = "https://github.com/UsotsukiKaze/nonebot-plugin-usoparser/issues"
+
+[project.optional-dependencies]
+dev = ["build>=1.2", "pytest>=8", "ruff>=0.9"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+license-files = ["LICENSE", "LICENSES/*.txt", "NOTICE.md"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["nonebot_plugin_usoparser*"]
+
+[tool.setuptools.package-data]
+nonebot_plugin_usoparser = [
+  "render/templates/*.jinja",
+  "render/templates/*.css",
+  "render/templates/*.json",
+  "render/templates/*.png",
+  "render/templates/*.svg",
+  "render/templates/platform-marks/*",
+  "parsers/miyoushe/*.json",
+  "parsers/tieba/*.desc",
+  "utils/bilibili/**/*.proto",
+  "utils/bilibili/**/*.pyi",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

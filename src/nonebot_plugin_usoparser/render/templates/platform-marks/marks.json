@@ -1,0 +1,137 @@
+{
+  "kuaishou": {
+    "light_asset": "kuaishou-light.svg",
+    "dark_asset": "kuaishou-dark.svg",
+    "aspect": 1.0
+  },
+  "x": {
+    "light_asset": "x-light.svg",
+    "dark_asset": "x-dark.svg",
+    "aspect": 1.0
+  },
+  "netease": {
+    "light_asset": "netease-light.svg",
+    "dark_asset": "netease-dark.svg",
+    "aspect": 1.0
+  },
+  "kugou": {
+    "light_asset": "kugou-light.png",
+    "dark_asset": "kugou-dark.png",
+    "aspect": 1.0
+  },
+  "weibo": {
+    "light_asset": "weibo-light.png",
+    "dark_asset": "weibo-dark.png",
+    "aspect": 1.136
+  },
+  "rednote": {
+    "light_asset": "rednote-light.png",
+    "dark_asset": "rednote-dark.png",
+    "aspect": 2.476
+  },
+  "kuwo": {
+    "light_asset": "kuwo-light.png",
+    "dark_asset": "kuwo-dark.png",
+    "aspect": 1.195
+  },
+  "tieba": {
+    "light_asset": "tieba-light.png",
+    "dark_asset": "tieba-dark.png",
+    "aspect": 0.918
+  },
+  "zhihu": {
+    "light_asset": "zhihu-light.png",
+    "dark_asset": "zhihu-dark.png",
+    "aspect": 1.95
+  },
+  "duitang": {
+    "light_asset": "duitang-light.png",
+    "dark_asset": "duitang-dark.png",
+    "aspect": 2.009
+  },
+  "heybox": {
+    "light_asset": "heybox-light.png",
+    "dark_asset": "heybox-dark.png",
+    "aspect": 0.814
+  },
+  "lofter": {
+    "light_asset": "lofter-light.png",
+    "dark_asset": "lofter-dark.png",
+    "aspect": 1.0
+  },
+  "buff": {
+    "light_asset": "buff-light.png",
+    "dark_asset": "buff-dark.png",
+    "aspect": 3.048
+  },
+  "coolapk": {
+    "light_asset": "coolapk-light.png",
+    "dark_asset": "coolapk-dark.png",
+    "aspect": 1.763
+  },
+  "illu": {
+    "light_asset": "illu.png",
+    "dark_asset": "illu.png",
+    "aspect": 0.504
+  },
+  "hupu": {
+    "light_asset": "hupu-light.png",
+    "dark_asset": "hupu-dark.png",
+    "aspect": 1.036
+  },
+  "miyoushe": {
+    "light_asset": "miyoushe-light.png",
+    "dark_asset": "miyoushe-dark.png",
+    "aspect": 0.893
+  },
+  "douban": {
+    "light_asset": "douban-light.png",
+    "dark_asset": "douban-dark.png",
+    "aspect": 1.013
+  },
+  "5eplay": {
+    "light_asset": "5eplay-light.png",
+    "dark_asset": "5eplay-dark.png",
+    "aspect": 1.264
+  },
+  "doubao": {
+    "light_asset": "doubao.png",
+    "dark_asset": "doubao.png",
+    "aspect": 0.96
+  },
+  "linuxdo": {
+    "light_asset": "linuxdo.png",
+    "dark_asset": "linuxdo.png",
+    "aspect": 1.0
+  },
+  "wmpvp": {
+    "light_asset": "wmpvp.png",
+    "dark_asset": "wmpvp.png",
+    "aspect": 1.366
+  },
+  "zlb": {
+    "light_asset": "zlb.png",
+    "dark_asset": "zlb.png",
+    "aspect": 1.0
+  },
+  "ds": {
+    "light_asset": "ds-light.png",
+    "dark_asset": "ds-dark.png",
+    "aspect": 2.035
+  },
+  "qsmusic": {
+    "light_asset": "qsmusic.svg",
+    "dark_asset": "qsmusic.svg",
+    "aspect": 1.0
+  },
+  "acfun": {
+    "light_asset": "acfun-light.svg",
+    "dark_asset": "acfun-dark.svg",
+    "aspect": 3.136
+  },
+  "taptap": {
+    "light_asset": "taptap.svg",
+    "dark_asset": "taptap.svg",
+    "aspect": 3.705
+  }
+}

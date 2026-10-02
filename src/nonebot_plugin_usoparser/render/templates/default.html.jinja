@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="{{ data.theme }}">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{ data.post.title or data.post.platform.name }} · {{ data.meta.bot_name }}</title>
+        <link rel="stylesheet" href="icon.css" />
+        <link rel="stylesheet" href="tailwind.css" />
+        <link rel="stylesheet" href="showcase.css" />
+        {% from "macros.jinja" import render_content_items, render_platform_brand, resolve_cover_src %}
+    </head>
+    <body class="showcase-body">
+        {% set post = data.post %}
+        {% set card_kind = post.card_kind|default('article') %}
+        {% set cover_src = resolve_cover_src(post) %}
+        {% set parts = namespace(video=none, lead=none, rest=[], video_texts=[]) %}
+        {% set gallery = namespace(images=[], texts=[], repost_texts=[]) %}
+        {% set live = namespace(images=[], texts=[], cover=none, frame=none) %}
+        {% for item in post.content %}
+            {% if item.type in ['image', 'live_photo', 'graphic', 'cover'] and item.src and item.previewable|default(true) %}
+                {% set _ = gallery.images.append(item) %}
+                {% set _ = live.images.append(item) %}
+                {% if item.alt|default('') == '直播封面' %}{% set live.cover = item %}{% endif %}
+                {% if item.alt|default('') == '当前画面' %}{% set live.frame = item %}{% endif %}
+            {% elif item.type == 'text' and item.text|trim %}
+                {% set _ = gallery.texts.append(item.text) %}
+                {% if item.text|trim not in ['直播中', '未开播', '轮播中'] and item.text[:3] != '分区:' %}
+                    {% set _ = live.texts.append(item.text) %}
+                {% endif %}
+            {% endif %}
+            {% if item.type == 'video' and parts.video is none %}
+                {% set parts.video = item %}
+            {% elif card_kind == 'video' and item.type == 'text' and item.text|trim %}
+                {% set _ = parts.video_texts.append(item.text|trim) %}
+            {% elif item.type == 'text' and parts.lead is none and not post.title %}
+                {% set parts.lead = item %}
+            {% else %}
+                {% set _ = parts.rest.append(item) %}
+            {% endif %}
+        {% endfor %}
+        {% if post.repost %}
+            {% for item in post.repost.content %}
+                {% if item.type in ['image', 'live_photo', 'graphic', 'cover'] and item.src and item.previewable|default(true) %}
+                    {% set _ = gallery.images.append(item) %}
+                {% elif item.type == 'text' and item.text|trim %}
+                    {% set _ = gallery.repost_texts.append(item.text) %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        {% if not cover_src and gallery.images %}{% set cover_src = gallery.images[0].src %}{% endif %}
+        {% if live.cover is none and live.images and live.images[0].alt|default('') != '当前画面' %}{% set live.cover = live.images[0] %}{% endif %}
+        {% if live.frame is none and live.images|length > 1 %}{% set live.frame = live.images[-1] %}{% endif %}
+        {% set author_stats = post.extra.author_stats if post.extra.author_stats is defined else none %}
+        <main class="showcase-card showcase-card--{{ post.platform.id }} showcase-card--{{ card_kind }} {{ 'showcase-card--portrait' if post.extra.video_orientation|default('') == 'portrait' else '' }}">
+            {% if cover_src %}<img class="showcase-ambient" src="{{ cover_src }}" alt="" />{% endif %}
+            <div class="showcase-wash"></div>
+            <div class="showcase-inner">
+                <header class="showcase-header">
+                    {% if card_kind == 'live' %}
+                        <div class="showcase-live-identity">
+                            <div class="showcase-identity">
+                                <img class="showcase-avatar" src="{{ post.author.avatar }}" alt="" />
+                                <div class="showcase-identity-text">
+                                    <div class="showcase-author-name">{{ post.author.name }}</div>
+                                    <div class="showcase-byline">
+                                        {% if post.live_elapsed %}
+                                            <span><i class="fa-icon fa-clock"></i>已开播 {{ post.live_elapsed }}</span>
+                                        {% elif post.author.location %}
+                                            <span><i class="fa-icon fa-location-dot"></i>IP 属地 {{ post.author.location }}</span>
+                                        {% else %}
+                                            <span>UID {{ post.author.id or '暂缺' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="showcase-live-status {{ 'showcase-live-status--on' if post.extra.live_status|default('') == '直播中' else '' }}"><span></span>{{ post.extra.live_status|default('直播间') }}</div>
+                        </div>
+                    {% else %}
+                        <div class="showcase-identity">
+                            <img class="showcase-avatar" src="{{ post.author.avatar }}" alt="" />
+                            <div class="showcase-identity-text">
+                                <div class="showcase-author-name">{{ post.author.name }}</div>
+                                <div class="showcase-byline">
+                                    {% if post.formatted_datetime %}<span><i class="fa-icon fa-clock"></i>{{ post.formatted_datetime }}</span>{% endif %}
+                                    {% if post.author.location %}<span><i class="fa-icon fa-location-dot"></i>{{ post.author.location }}</span>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {{ render_platform_brand(post.platform) }}
+                </header>
+
+                {% if card_kind == 'gallery' %}
+                    {% if post.title %}<div class="showcase-intro showcase-intro--gallery"><h1>{{ post.title }}</h1></div>{% endif %}
+                    {% if gallery.images %}
+                        <section class="showcase-gallery {{ 'showcase-gallery--single' if gallery.images|length == 1 else '' }}" aria-label="图文图片，卡片最多展示四张">
+                            <div class="showcase-gallery-main">
+                                <img src="{{ gallery.images[0].src }}" alt="图文主图" />
+                                {% if gallery.images[0].is_live %}<span class="showcase-gallery-live">实况</span>{% endif %}
+                            </div>
+                            {% if gallery.images|length > 1 %}
+                                <div class="showcase-gallery-rail">
+                                    {% for image in gallery.images[1:4] %}
+                                        <div class="showcase-gallery-thumb">
+                                            <img src="{{ image.src }}" alt="图文图片 {{ loop.index + 1 }}" />
+                                            {% if image.is_live %}<span class="showcase-gallery-live">实况</span>{% endif %}
+                                            {% if loop.last and gallery.images|length > 4 %}<span class="showcase-gallery-more">+{{ gallery.images|length - 4 }}</span>{% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </section>
+                    {% endif %}
+                    {% if gallery.texts %}
+                        <section class="showcase-gallery-copy" aria-label="图文文字摘要">
+                            <div class="showcase-section-label">图文内容</div>
+                            <p>{{ gallery.texts|join('\n')|truncate(240, True, '…') }}</p>
+                            <small>完整文字和原图见下方聊天记录</small>
+                        </section>
+                    {% endif %}
+                {% elif card_kind == 'live' %}
+                    <section class="showcase-live-heading">
+                        {% if post.title %}<h1>{{ post.title }}</h1>{% endif %}
+                    </section>
+                    <section class="showcase-live-board showcase-live-board--cover-{{ live.cover.orientation if live.cover else 'landscape' }} {{ 'showcase-live-board--frame-' ~ live.frame.orientation if live.frame else 'showcase-live-board--single showcase-live-board--' ~ (live.cover.orientation if live.cover else 'landscape') }}" aria-label="{{ '直播封面和直播数据' if not live.frame else '直播封面、当前画面和直播数据' }}">
+                        <div class="showcase-live-cover showcase-live-tile">
+                            {% if live.cover %}
+                                <img class="showcase-live-backdrop" src="{{ live.cover.src }}" alt="" />
+                                <img class="showcase-live-cover-image {{ 'showcase-live-portrait-image' if live.cover.orientation == 'portrait' else '' }}" src="{{ live.cover.src }}" alt="直播封面" />
+                            {% else %}<div class="showcase-live-placeholder">暂无直播封面</div>{% endif %}
+                        </div>
+                        <div class="showcase-live-side">
+                            {% if live.frame %}<div class="showcase-live-frame showcase-live-tile">
+                                <img class="showcase-live-backdrop" src="{{ live.frame.src }}" alt="" />
+                                <img class="{{ 'showcase-live-portrait-image' if live.frame.orientation == 'portrait' else '' }}" src="{{ live.frame.src }}" alt="当前画面" />
+                            </div>{% endif %}
+                            <div class="showcase-live-info">
+                                <div class="showcase-live-info-title">直播信息</div>
+                                <div class="showcase-live-info-stats">
+                                    {% if post.extra.live_popularity|default(none) %}
+                                        <div><span>人气</span><strong>{{ post.extra.live_popularity }}</strong></div>
+                                    {% elif post.stats.view_count %}
+                                        <div><span>观看</span><strong>{{ post.stats.view_count }}</strong></div>
+                                    {% endif %}
+                                    {% if post.extra.live_followers|default(none) %}
+                                        <div><span>关注</span><strong>{{ post.extra.live_followers }}</strong></div>
+                                    {% elif post.stats.like_count %}
+                                        <div><span>点赞</span><strong>{{ post.stats.like_count }}</strong></div>
+                                    {% endif %}
+                                </div>
+                                {% if not (post.extra.live_popularity|default(none) or post.stats.view_count or post.extra.live_followers|default(none) or post.stats.like_count) %}
+                                    <div class="showcase-live-info-empty">平台暂未提供人数数据</div>
+                                {% endif %}
+                                {% if post.extra.live_area|default(none) or post.extra.live_room_id|default(none) %}
+                                    <div class="showcase-live-info-foot">
+                                        {% if post.extra.live_area|default(none) %}<span>{{ post.extra.live_area }}</span>{% endif %}
+                                        {% if post.extra.live_room_id|default(none) %}<span>房间 {{ post.extra.live_room_id }}</span>{% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </section>
+                    {% if live.texts %}<p class="showcase-live-description">{{ live.texts|join('\n')|truncate(190, True, '…') }}</p>{% endif %}
+                {% else %}
+                    {% if post.title or parts.lead or parts.video_texts %}
+                        <div class="showcase-intro {{ 'showcase-intro--video' if card_kind == 'video' else '' }}">
+                            {% if post.title %}<h1>{{ post.title }}</h1>{% endif %}
+                            {% if card_kind == 'video' and parts.video_texts %}
+                                {% set video_description = parts.video_texts|join(' ')|replace('\r', ' ')|replace('\n', ' ')|trim %}
+                                {% if video_description[:3] in ['简介:', '简介：'] %}{% set video_description = video_description[3:]|trim %}{% endif %}
+                                {% if video_description %}<p class="showcase-video-description">{{ video_description|truncate(180, True, '…') }}</p>{% endif %}
+                            {% elif parts.lead %}<p>{{ parts.lead.text }}</p>{% endif %}
+                        </div>
+                    {% endif %}
+
+                    {% if parts.video %}
+                        <section class="showcase-hero" aria-label="视频封面">
+                            <img class="showcase-hero-glow" src="{{ parts.video.src }}" alt="" />
+                            <img class="showcase-hero-image" src="{{ parts.video.src }}" alt="视频封面" />
+                            <div class="showcase-hero-top"><span>{{ parts.video.duration }}</span></div>
+                            <div class="showcase-hero-bottom">
+                                {% if post.platform.id == 'douyin' and post.extra.soundtrack is defined %}
+                                    <div class="showcase-soundtrack">
+                                        <span class="showcase-soundtrack-icon">
+                                            {% if post.extra.soundtrack_cover_src is defined %}<img src="{{ post.extra.soundtrack_cover_src }}" alt="配乐封面" />
+                                            {% else %}<i class="fa-icon fa-music"></i>{% endif %}
+                                        </span>
+                                        <span class="showcase-soundtrack-copy">
+                                            <strong>{{ post.extra.soundtrack }}</strong>
+                                            <small>{{ post.extra.soundtrack_author|default(post.author.name) }}</small>
+                                        </span>
+                                    </div>
+                                {% endif %}
+                                <span class="showcase-play"><i class="fa-icon fa-play"></i></span>
+                            </div>
+                        </section>
+                    {% endif %}
+                    {% if parts.rest %}<section class="showcase-content">{{ render_content_items(parts.rest) }}</section>{% endif %}
+                {% endif %}
+
+                {% if post.repost %}
+                    <section class="showcase-repost">
+                        <div class="showcase-repost-label">转发 · {{ post.repost.author.name }}</div>
+                        {% if post.repost.title %}<strong>{{ post.repost.title }}</strong>{% endif %}
+                        {% if card_kind == 'gallery' %}
+                            {% if gallery.repost_texts %}<p class="showcase-repost-preview">{{ gallery.repost_texts|join('\n')|truncate(140, True, '…') }}</p>{% endif %}
+                        {% else %}{{ render_content_items(post.repost.content) }}{% endif %}
+                    </section>
+                {% endif %}
+
+                {% if post.ai_summary and 'cookie 未配置或失效' not in post.ai_summary %}
+                    <section class="showcase-summary">
+                        <div class="showcase-section-label">AI 总结</div>
+                        <p>{{ post.ai_summary }}</p>
+                    </section>
+                {% endif %}
+
+                {% set fixed_stats = [
+                    {'icon': 'eye', 'label': '播放', 'value': post.stats.view_count},
+                    {'icon': 'heart', 'label': '点赞', 'value': post.stats.like_count},
+                    {'icon': 'comment-dots', 'label': '评论', 'value': post.stats.comment_count},
+                    {'icon': 'star', 'label': '收藏', 'value': post.stats.collect_count},
+                    {'icon': 'share-nodes', 'label': '分享', 'value': post.stats.share_count}
+                ] %}
+                {% if card_kind != 'live' and (post.stats.view_count is not none or post.stats.like_count is not none or post.stats.comment_count is not none or post.stats.collect_count is not none or post.stats.share_count is not none) %}
+                    <section class="showcase-stats" aria-label="作品数据">
+                        {% for stat in fixed_stats if stat.value is not none %}
+                            <div class="showcase-stat">
+                                <div class="showcase-stat-label"><i class="fa-icon fa-{{ stat.icon }}"></i>{{ stat.label }}</div>
+                                <div class="showcase-stat-value">{{ stat.value }}</div>
+                            </div>
+                        {% endfor %}
+                    </section>
+                {% endif %}
+                {% if card_kind != 'live' and post.stats.extra %}
+                    <div class="showcase-extra-stats">
+                        {% for stat in post.stats.extra if stat.value is not none %}<span>{{ stat.label }} <strong>{{ stat.value }}</strong></span>{% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if card_kind != 'live' %}
+                <section class="showcase-author-footer">
+                    <div class="showcase-author-details">
+                        <div class="showcase-author-heading">
+                            <img class="showcase-avatar" src="{{ post.author.avatar }}" alt="" />
+                            <div>
+                                <div class="showcase-author-name">{{ post.author.name }}</div>
+                                {% if post.extra.author_handle is defined %}<div class="showcase-handle">{{ post.extra.author_handle }}</div>
+                                {% elif post.author.id %}<div class="showcase-handle">ID: {{ post.author.id }}</div>{% endif %}
+                            </div>
+                        </div>
+                        {% if post.author.description %}<p class="showcase-author-bio">{{ post.author.description }}</p>{% endif %}
+                        {% if author_stats %}
+                            <div class="showcase-author-stats">
+                                {% for stat in author_stats %}
+                                    <div><span>{{ stat.label }}</span><strong>{{ stat.value }}</strong></div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% if post.qrcode and card_kind != 'live' %}
+                        <div class="showcase-qr"><img src="{{ post.qrcode }}" alt="作品二维码" /><span>扫码查看作品</span></div>
+                    {% endif %}
+                </section>
+                {% endif %}
+                <footer class="showcase-footer">
+                    <div class="showcase-footer-brand">
+                        <img class="showcase-footer-icon showcase-footer-icon--nonebot" src="nonebot-logo.png" alt="NoneBot" />
+                        <div class="showcase-footer-copy">
+                            <small>NONEBOT-PLUGIN</small>
+                            <strong>usoparser</strong>
+                        </div>
+                    </div>
+                    <div class="showcase-footer-brand showcase-footer-brand--kkk" aria-label="致敬原项目 karin-plugin-kkk">
+                        <!-- Emblem from karin-plugin-kkk v2.42.5 DefaultLayout.tsx (GPL-3.0). -->
+                        <svg viewBox="0 0 230 221" aria-hidden="true">
+                            <path d="M132.75,87.37l-53.72-53.37c-4.66-4.63-1.38-12.58,5.18-12.58h115.13c6.57,0,9.84,7.95,5.18,12.58l-53.72,53.37c-4.99,4.96-13.06,4.96-18.05,0Z" fill="currentColor" />
+                            <path d="M28.49,186.89l.03-51.42c-.02-6.57,7.92-9.87,12.56-5.23l57.02,57.02c4.64,4.64,1.34,12.41-5.23,12.39h-51.42c-7.04-.02-12.94-5.72-12.96-12.76Z" fill="currentColor" />
+                            <path d="M41.54,23.68l163.04,163.05c4.78,4.78,1.39,12.95-5.36,12.94h-47.88c-9.69,0-18.99-3.86-25.84-10.71L39.3,102.75c-6.85-6.85-10.7-16.15-10.7-25.84V29.04c0-6.76,8.16-10.14,12.94-5.36Z" fill="currentColor" />
+                        </svg>
+                        <div class="showcase-footer-copy">
+                            <small>KARIN-PLUGIN</small>
+                            <strong>kkk</strong>
+                        </div>
+                    </div>
+                    <span class="showcase-footer-divider" aria-hidden="true"></span>
+                    <div class="showcase-footer-brand showcase-footer-brand--author">
+                        <img class="showcase-footer-icon" src="ukp.png" alt="UsotsukiKaze" />
+                        <div class="showcase-footer-copy">
+                            <small>POWERED BY</small>
+                            <strong>UsotsukiKaze</strong>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </main>
+    </body>
+</html>
