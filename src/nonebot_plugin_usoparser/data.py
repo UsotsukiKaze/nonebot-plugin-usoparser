@@ -5,12 +5,15 @@ from datetime import datetime
 from typing import Any, Literal, TypedDict
 
 from anyio import Path
+from nonebot import logger
 
+from .config import pconfig
 from .constants import STICKER_CDN, PlatformEnum
 from .download import DOWNLOADER
 from .download.task import DownloadTaskWrapper
+from .exception import SizeLimitException
 from .utils.cache import CacheManager
-from .utils.ffmpeg import FFmpeg
+from .utils.ffmpeg import FFmpeg, get_transcode_limit
 
 ImageLayout = Literal["grid", "x"]
 
@@ -29,15 +32,44 @@ class MediaContent:
     _size_bytes: int | None = field(default=None, init=False, repr=False)
     is_dynamic_size: bool = field(default=False, init=False)
     """流媒体在下载完成前无法确定文件大小"""
+    speedup: float = field(default=1.0, init=False, repr=False)
+    """上传前倍速，1.0 表示不变速；渲染层与 get_path 读同一个值"""
 
     async def get_path(self) -> Path:
         """
-        获取媒体文件路径
+        获取媒体文件路径，配了倍速时返回产物而不是原片
 
         :raise ZeroSizeException:  文件大小为零
         :raise SizeLimitException: 文件大小超过限制
         """
-        return await self.path_task
+        max_size_bytes = pconfig.max_size * 1024 * 1024
+        if self._size_bytes is not None and self._size_bytes > max_size_bytes:
+            raise SizeLimitException(self._size_bytes / 1024 / 1024)
+
+        path = await self.path_task
+        self._size_bytes = (await path.stat()).st_size
+        if self._size_bytes > max_size_bytes:
+            raise SizeLimitException(self._size_bytes / 1024 / 1024)
+
+        return path if self.speedup == 1.0 else await self.apply_speedup(path)
+
+    async def apply_speedup(self, path: Path) -> Path:
+        """按倍速产出上传用的文件；缺 ffmpeg 或失败都退回原片并丢掉倍速"""
+        if not await FFmpeg.is_available():
+            logger.warning("ffmpeg 不可用，跳过上传前倍速")
+            self.speedup = 1.0
+            return path
+        try:
+            async with get_transcode_limit():
+                return await self.retime(path, self.speedup)
+        except Exception as e:
+            logger.warning(f"上传前倍速失败，改用原始文件: {type(e).__name__}: {e!r}")
+        self.speedup = 1.0
+        return path
+
+    async def retime(self, path: Path, ratio: float) -> Path:
+        """变速产物由具体媒体类型实现"""
+        return path
 
     @staticmethod
     def _format_size(size_bytes: int | None) -> str:
@@ -86,12 +118,17 @@ class AudioContent(MediaContent):
 
     async def get_source_path(self) -> Path:
         """获取音频源文件；自定义下载任务没有独立源文件时回退到发送文件。"""
-        return await self.source if self.source is not None else await self.path_task
+        path = await self.source if self.source is not None else await self.path_task
+        size = (await path.stat()).st_size
+        if size > pconfig.max_size * 1024 * 1024:
+            raise SizeLimitException(size / 1024 / 1024)
+        # 显式配置了倍速时上传派生文件，缓存中的原始音频仍然保留。
+        return path if self.speedup == 1.0 else await self.apply_speedup(path)
 
     @property
     def display_duration(self) -> str:
         try:
-            total_seconds = int(self.duration)
+            total_seconds = int(self.duration / self.speedup)
             if total_seconds <= 0:
                 return "0:00"
 
@@ -103,6 +140,15 @@ class AudioContent(MediaContent):
             return f"{hours}:{minutes:02d}:{seconds:02d}"
         except (TypeError, ValueError):
             return "NaN"
+
+    async def get_display_size(self) -> str:
+        # 变速后的体积只能等比估，``~`` 前缀表示近似值
+        if self.speedup != 1.0 and self._size_bytes:
+            return f"~{self._format_size(int(self._size_bytes / self.speedup))}"
+        return await MediaContent.get_display_size(self)
+
+    async def retime(self, path: Path, ratio: float) -> Path:
+        return await FFmpeg.edit_audio(path, speed_ratio=ratio)
 
 
 @dataclass(repr=False, slots=True)
@@ -120,7 +166,7 @@ class VideoContent(MediaContent):
     @property
     def display_duration(self) -> str:
         try:
-            total_seconds = int(self.duration)
+            total_seconds = int(self.duration / self.speedup)
             if total_seconds <= 0:
                 return "0:00"
 
@@ -132,6 +178,15 @@ class VideoContent(MediaContent):
             return f"{hours}:{minutes:02d}:{seconds:02d}"
         except (TypeError, ValueError):
             return "NaN"
+
+    async def get_display_size(self) -> str:
+        # 变速后的体积只能等比估，``~`` 前缀表示近似值
+        if self.speedup != 1.0 and self._size_bytes:
+            return f"~{self._format_size(int(self._size_bytes / self.speedup))}"
+        return await MediaContent.get_display_size(self)
+
+    async def retime(self, path: Path, ratio: float) -> Path:
+        return await FFmpeg.edit_video(path, speed_ratio=ratio)
 
 
 @dataclass(repr=False, slots=True)

@@ -179,7 +179,7 @@ class KuGouParser(BaseParser):
 
         quality_variant = "sq" if audio_info is not playinfo else "original"
         audio_content = self.create_audio(
-            url=audio_url,
+            url_or_task=audio_url,
             duration=playinfo.timeLength,
             cache_key=f"kugou:{playinfo.hash}:{quality_variant}",
         )

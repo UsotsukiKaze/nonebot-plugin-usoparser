@@ -76,6 +76,7 @@ UsoParser 基于 [nonebot-plugin-parser-lite](https://github.com/sokoko-org/none
 | 酷狗音乐 | ✅ | ❌ |
 | 汽水音乐 | ✅ | ❌ |
 | 酷我音乐 | ✅ | ❌ |
+| QQ 音乐 | ✅ | ❌ |
 
 
 
@@ -133,6 +134,12 @@ PLITE_MAX_COMMENTS=5
 | `PLITE_DISABLED_PLATFORMS` | `[]` | 禁用指定平台的解析器 |
 | `PLITE_MAX_COMMENTS` | `5` | 评论数量上限 |
 | `PLITE_RENDER_THEME` | `default` | 使用的卡片主题 ID |
+| `PLITE_RENDER_FORMAT` | `webp` | 卡片输出格式，可选 `webp` 或 `jpeg`；JPEG 不保留透明度 |
+| `PLITE_FILE_UPLOAD_TIMEOUT` | `None` | 文件上传等待秒数，未设置时沿用 NoneBot 的 API 超时 |
+| `PLITE_MEDIA_SPEEDUP_RULES` | `[]` | 可选倍速规则，如 `["bilibili:123456:1.25"]`，按平台与作者 ID 匹配 |
+| `PLITE_MEDIA_TRANSCODE_CONCURRENCY` | `1` | 媒体处理的最大并发数，须大于等于 1 |
+| `PLITE_BSB_API_BASE` | `None` | 可选的 BilibiliSponsorBlock 兼容服务地址，不配置则不裁切 |
+| `PLITE_BSB_CATEGORIES` | `[]` | 从空降标注中选取的裁切分类；使用该服务时需配置 |
 
 完整字段及校验规则见 [`config.py`](https://github.com/UsotsukiKaze/nonebot-plugin-usoparser/blob/main/src/nonebot_plugin_usoparser/config.py)。高画质、部分评论和音乐源文件可能需要平台登录状态或可用的第三方接口；请遵守平台服务条款和版权要求。
 
@@ -154,6 +161,7 @@ PLITE_MAX_COMMENTS=5
 ```bash
 python -m pip install -e ".[dev]"
 python -m unittest discover -s tests -v
+python -m pytest tests -q
 ```
 
 ## 致谢

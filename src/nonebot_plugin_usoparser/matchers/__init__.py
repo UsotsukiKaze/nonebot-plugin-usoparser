@@ -28,6 +28,7 @@ from ..parsers.base import BaseParser, ParseResult
 from ..render import RENDERER
 from ..render.classify import classify_card
 from ..utils.common import LimitedSizeDict
+from ..utils.media_edit import apply_media_speedup
 from .rule import Searched, SearchResult, _extract_text, on_keyword_regex
 
 # 关键词 / 类型 -> Parser 映射
@@ -199,6 +200,9 @@ async def parser_handler(
     """统一的解析处理器"""
     result = await _get_or_parse_result(sr)
 
+    # 上传前倍速必须在渲染之前定稿，卡片上的时长才是最终文件的时长
+    apply_media_speedup(result)
+
     summary_msg = await RENDERER.render_messages(result)
     card_kind = classify_card(result)
     is_video = card_kind == "video"
@@ -209,8 +213,8 @@ async def parser_handler(
         and card_kind not in ("video", "gallery", "live")
     )
     if not summary_in_forward:
-        receipt = await summary_msg.send()
-        if is_video and (reply := receipt.get_reply(0)) is not None:
+        receipt = await send_with_media_fallback(summary_msg, result)
+        if is_video and receipt is not None and (reply := receipt.get_reply(0)) is not None:
             _VIDEO_CARD_RESULTS[_video_card_key(session, reply.id)] = result
 
     # 直播信息以卡片为完整输出，不再附加封面/正文合并转发。
@@ -287,7 +291,9 @@ async def register_bili_matcher():
                 convert_to_mp3=True,
             )
             if pconfig.need_upload_audio:
-                await UniMessage(await UniHelper.file_seg(audio_path)).send()
+                await send_with_media_fallback(
+                    UniMessage(await UniHelper.file_seg(audio_path))
+                )
             else:
                 await UniMessage(await UniHelper.record_seg(audio_path)).send()
 

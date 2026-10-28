@@ -51,7 +51,14 @@ Repository = "https://github.com/UsotsukiKaze/nonebot-plugin-usoparser"
 Issues = "https://github.com/UsotsukiKaze/nonebot-plugin-usoparser/issues"
 
 [project.optional-dependencies]
-dev = ["build>=1.2", "pytest>=8", "ruff>=0.9"]
+dev = [
+  "build>=1.2",
+  "pytest>=8",
+  "pytest-asyncio>=0.23",
+  "nonebot2[fastapi]>=2.4.3,<3",
+  "nonebot-adapter-onebot>=2.4,<3",
+  "ruff>=0.9",
+]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -70,6 +77,7 @@ nonebot_plugin_usoparser = [
   "render/templates/*.png",
   "render/templates/*.svg",
   "render/templates/platform-marks/*",
+  "render/templates/backgrounds/*.webp",
   "parsers/miyoushe/*.json",
   "parsers/tieba/*.desc",
   "utils/bilibili/**/*.proto",

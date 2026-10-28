@@ -73,6 +73,10 @@ class UniResponse:
         return self._raw.content
 
     @property
+    def cookies(self) -> dict[str, str]:
+        return dict(self._raw.cookies.items())
+
+    @property
     def is_success(self) -> bool:
         return codes.is_success(self.status_code)
 

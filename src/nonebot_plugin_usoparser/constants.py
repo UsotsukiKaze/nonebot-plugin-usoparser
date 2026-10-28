@@ -13,19 +13,11 @@ COMMON_HEADER: Final[dict[str, str]] = {
     )
 }
 
-IOS_HEADER: Final[dict[str, str]] = {
+QQ_HEADER: Final[dict[str, str]] = {
     "User-Agent": (
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) "
-        "AppleWebKit/605.1.15 (KHTML, like Gecko) "
-        "Version/16.6 Mobile/15E148 Safari/604.1 Edg/132.0.0.0"
-    )
-}
-
-ANDROID_HEADER: Final[dict[str, str]] = {
-    "User-Agent": (
-        "Mozilla/5.0 (Linux; Android 15; SM-G998B) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/132.0.0.0 Mobile Safari/537.36 Edg/132.0.0.0"
+        "Mozilla/5.0 (Linux; Android 16; 2201123C Build/1450000) AppleWebKit/537.36"
+        " (KHTML, like Gecko) Version/4.0 Chrome/121.0.6167.71 Safari/537.36 Mobile"
+        " Safari/537.36 V1_AND_SQ_9.3.70_16410_YYB_D QQ/9.3.70.41925 AppId/537395443"
     )
 }
 
@@ -36,6 +28,9 @@ DOWNLOAD_TIMEOUT: Final[Timeout] = Timeout(
 )
 
 STICKER_CDN: Final[str] = "https://sticker.sokoko.org/assets/{platform}/{name}.webp"
+
+MIN_KEEP_PIECE_SECONDS: Final[float] = 0.05
+"""裁切后保留片段的最小时长"""
 
 
 class PlatformEnum(StrEnum):
@@ -68,6 +63,7 @@ class PlatformEnum(StrEnum):
     ZLB = "zlb"
     TAPTAP = "taptap"
     DS = "ds"
+    QQMUSIC = "qqmusic"
 
     def __str__(self) -> str:
         return self.value
@@ -90,9 +86,9 @@ class MatchWithParams:
         self.match = match
         self.url = match.group(0)
         parsed = urlparse(self.url)
-        qs = parse_qs(parsed.query, keep_blank_values=True)
+        qs = parse_qs(parsed.query)
         # SPA hash routes may contain their own query, e.g. ``#/song?id=123``.
-        fragment_qs = parse_qs(urlparse(parsed.fragment).query, keep_blank_values=True)
+        fragment_qs = parse_qs(urlparse(parsed.fragment).query)
         qs.update(fragment_qs)
         # 只取第一个
         self.params: dict[str, str] = {k: v[0] for k, v in qs.items()}

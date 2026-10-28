@@ -10,7 +10,7 @@ from ...utils.format import (
     HTML_NEWLINE_TAGS,
     anchor_text,
     append_html_text,
-    clean_blank,
+    is_inside,
 )
 
 
@@ -38,8 +38,8 @@ def parse_rich_content(html: str) -> list[ContentItem]:
 def _iter_media_and_text(soup: BeautifulSoup):
     skip_parent: Tag | None = None
     for element in soup.descendants:
-        if skip_parent:
-            if element in skip_parent.descendants:
+        if skip_parent is not None:
+            if is_inside(element, skip_parent):
                 continue
             else:
                 skip_parent = None
@@ -93,8 +93,7 @@ def _iter_media_and_text(soup: BeautifulSoup):
                         )
 
         elif isinstance(element, NavigableString):
-            if text := clean_blank(str(element)):
-                yield text
+            yield str(element)
 
 
 def _parse_quote(aside: Tag):

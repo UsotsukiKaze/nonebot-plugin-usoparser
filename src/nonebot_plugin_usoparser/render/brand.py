@@ -7,6 +7,7 @@ from typing import Any
 
 MARKS_DIR = Path(__file__).parent / "templates" / "platform-marks"
 WORDMARKS = {
+    "qqmusic": ("QQ音乐", "#169b62", "#44d79a"),
     "acfun": ("AcFun", "#f23b3e", "#ff7778"),
     "qsmusic": ("汽水音乐", "#18c889", "#52e8b4"),
 }

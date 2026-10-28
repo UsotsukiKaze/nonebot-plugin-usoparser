@@ -7,6 +7,7 @@
         <link rel="stylesheet" href="icon.css" />
         <link rel="stylesheet" href="tailwind.css" />
         <link rel="stylesheet" href="showcase.css" />
+        <link rel="stylesheet" href="acrylic.css" />
         {% from "macros.jinja" import render_content_items, render_platform_brand, resolve_cover_src %}
     </head>
     <body class="showcase-body">
@@ -161,6 +162,11 @@
                         </div>
                     </section>
                     {% if live.texts %}<p class="showcase-live-description">{{ live.texts|join('\n')|truncate(190, True, '…') }}</p>{% endif %}
+                {% elif card_kind == 'article' %}
+                    <section class="showcase-article" aria-label="文字内容">
+                        {% if post.title %}<h1>{{ post.title }}</h1>{% endif %}
+                        <div class="showcase-article-body">{{ render_content_items(post.content) }}</div>
+                    </section>
                 {% else %}
                     {% if post.title or parts.lead or parts.video_texts %}
                         <div class="showcase-intro {{ 'showcase-intro--video' if card_kind == 'video' else '' }}">
@@ -227,7 +233,7 @@
                         {% for stat in fixed_stats if stat.value is not none %}
                             <div class="showcase-stat">
                                 <div class="showcase-stat-label"><i class="fa-icon fa-{{ stat.icon }}"></i>{{ stat.label }}</div>
-                                <div class="showcase-stat-value">{{ stat.value }}</div>
+                            <div class="showcase-stat-value">{{ stat.value }}</div>
                             </div>
                         {% endfor %}
                     </section>

@@ -1,0 +1,120 @@
+/* Acrylic wallpaper theme; dimensions are CSS pixels at 620px card width. */
+:root {
+    --acrylic-wallpaper: url("backgrounds/day.webp");
+    --acrylic-position: 50% 42%;
+    --acrylic-blur: 26px;
+    --acrylic-saturation: 1.12;
+    --acrylic-tint-top: rgba(245, 250, 255, .80);
+    --acrylic-tint-mid: rgba(248, 250, 255, .62);
+    --acrylic-tint-bottom: rgba(246, 249, 255, .82);
+    --card-ink: #202d41;
+    --card-muted: #58697f;
+    --card-surface: rgba(255, 255, 255, .48);
+    --card-border: rgba(255, 255, 255, .72);
+    --acrylic-rim: rgba(255, 255, 255, .78);
+    --acrylic-panel: rgba(255, 255, 255, .42);
+    --acrylic-panel-shadow: rgba(36, 63, 91, .09);
+    --acrylic-grain-opacity: .035;
+}
+
+html[data-theme="dark"] {
+    --acrylic-wallpaper: url("backgrounds/night.webp");
+    --acrylic-position: 50% 43%;
+    --acrylic-blur: 30px;
+    --acrylic-saturation: 1.12;
+    --acrylic-tint-top: rgba(13, 21, 42, .68);
+    --acrylic-tint-mid: rgba(16, 24, 45, .47);
+    --acrylic-tint-bottom: rgba(12, 20, 38, .72);
+    --card-ink: #f2f6ff;
+    --card-muted: #c0ccdf;
+    --card-surface: rgba(77, 95, 132, .24);
+    --card-border: rgba(204, 224, 255, .19);
+    --acrylic-rim: rgba(216, 233, 255, .25);
+    --acrylic-panel: rgba(42, 59, 91, .42);
+    --acrylic-panel-shadow: rgba(1, 6, 18, .20);
+    --acrylic-grain-opacity: .045;
+}
+
+.showcase-card,
+html[data-theme="dark"] .showcase-card {
+    background: #d8e7f3;
+    box-shadow: inset 0 0 0 1px var(--acrylic-rim);
+}
+html[data-theme="dark"] .showcase-card { background: #111d36; }
+
+.showcase-card::before {
+    position: absolute;
+    z-index: -4;
+    inset: -44px;
+    background-image: var(--acrylic-wallpaper);
+    background-position: var(--acrylic-position);
+    background-size: cover;
+    filter: blur(var(--acrylic-blur)) saturate(var(--acrylic-saturation));
+    transform: scale(1.04);
+    content: "";
+    pointer-events: none;
+}
+
+.showcase-card > .showcase-ambient,
+.music-card > .showcase-ambient { display: none; }
+
+.showcase-card > .showcase-wash,
+html[data-theme="dark"] .showcase-card > .showcase-wash {
+    z-index: -2;
+    background: linear-gradient(180deg, var(--acrylic-tint-top), var(--acrylic-tint-mid) 39%, var(--acrylic-tint-mid) 66%, var(--acrylic-tint-bottom));
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+
+.showcase-card::after {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border: 1px solid var(--acrylic-rim);
+    border-radius: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23ffffff' filter='url(%23n)' opacity='.7' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
+    opacity: var(--acrylic-grain-opacity);
+    content: "";
+    pointer-events: none;
+}
+
+.showcase-live-info,
+.showcase-gallery-copy,
+.showcase-article,
+.music-player,
+html[data-theme="dark"] .showcase-gallery-copy,
+html[data-theme="dark"] .music-player {
+    border-color: var(--card-border);
+    background: var(--acrylic-panel);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 8px 22px var(--acrylic-panel-shadow);
+    -webkit-backdrop-filter: blur(20px) saturate(1.12);
+    backdrop-filter: blur(20px) saturate(1.12);
+}
+
+.showcase-gallery-copy::before { opacity: .45; }
+.showcase-gallery-copy::after { opacity: .55; }
+.showcase-hero-glow { opacity: .30; }
+html[data-theme="dark"] .showcase-hero-glow { opacity: .22; }
+.showcase-live-tile { border: 1px solid var(--card-border); }
+.showcase-avatar { border: 1px solid var(--card-border); }
+
+.showcase-article {
+    margin: 27px 0 22px;
+    padding: 21px 23px;
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+}
+.showcase-article h1 { margin: 0 0 14px; font-size: 24px; line-height: 1.4; font-weight: 850; }
+.showcase-article-body {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 15;
+    color: var(--card-ink);
+    font-size: 17px;
+    font-weight: 550;
+    line-height: 1.78;
+    letter-spacing: .01em;
+}
+.showcase-card--article .showcase-content { font-size: 16px; line-height: 1.75; }
+.showcase-article-body span, .showcase-article-body p { font-size: inherit; line-height: inherit; }

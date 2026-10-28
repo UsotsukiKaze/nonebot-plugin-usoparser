@@ -1,16 +1,16 @@
 import asyncio
 import re
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from io import BytesIO
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, TypeVar
 
 from anyio import Path
 from jinja2 import Environment, FileSystemLoader
 from nonebot import logger
-from nonebot_plugin_alconna.uniseg import File
+from nonebot_plugin_alconna.uniseg import File, Text
 from PIL import Image
 
 from ..config import _nickname, gconfig, pconfig
@@ -34,6 +34,8 @@ from ..exception import (
 from ..helper import ForwardNodeInner, UniHelper, UniMessage, mark_media_role
 from ..utils.cache import CacheManager
 from ..utils.ffmpeg import FFmpeg
+from ..utils.media_edit import speedup_digest
+from ..utils.format import format_num
 from .context import PLACEHOLDER_IMAGE, ThemeData, build_theme_data, safe_src
 from .htmlrender_compat import get_new_page
 from .theme import MUSIC_PLATFORMS, ThemeDefinition, ThemeManager
@@ -48,7 +50,7 @@ MAX_FORWARD_NODES = 90
 """单个 forward 节点数上限"""
 
 IS_DEBUG = gconfig.log_level in ["DEBUG", "TRACE", 10, 5]
-RENDER_TEMPLATE_VERSION = "20261002-usoparser1"
+RENDER_TEMPLATE_VERSION = "20261028-usoparser-acrylic-kmb"
 
 Theme = Literal["light", "dark"]
 TEXT_SPLIT_PUNCTUATION = frozenset("。！？!?；;，,、…")
@@ -183,6 +185,77 @@ class _ForwardText:
         return chunks
 
 
+ForwardItem = TypeVar("ForwardItem")
+
+
+def split_forward_content(
+    content: ForwardNodeInner | _ForwardText, max_len: int
+) -> Sequence[ForwardNodeInner]:
+    """按文字阈值拆分，混合消息保留各消息段的顺序。"""
+    if isinstance(content, _ForwardText):
+        return content.split(max_len)
+    if isinstance(content, str):
+        return split_text_by_length_with_punct(content, max_len)
+    message = UniMessage(content)
+    if max_len <= 0 or len(message.extract_plain_text()) <= max_len:
+        return [content]
+
+    fragments: list[ForwardNodeInner] = []
+    fragment = UniMessage()
+    text_length = 0
+    for segment in message:
+        parts = (
+            [
+                Text(text)
+                for text in split_text_by_length_with_punct(segment.text, max_len)
+            ]
+            if isinstance(segment, Text)
+            else [segment]
+        )
+        for part in parts:
+            length = len(part.text) if isinstance(part, Text) else 0
+            if fragment and text_length + length > max_len:
+                fragments.append(fragment)
+                fragment = UniMessage()
+                text_length = 0
+            fragment.append(part)
+            text_length += length
+    if fragment:
+        fragments.append(fragment)
+    return fragments
+
+
+def pack_forward_items(
+    items: list[ForwardItem],
+    content_of: Callable[[ForwardItem], ForwardNodeInner],
+    with_content: Callable[[ForwardItem, ForwardNodeInner], ForwardItem],
+) -> Iterator[list[ForwardItem]]:
+    """统一清理节点首尾换行，并按文本长度和节点数分包。"""
+    chunk: list[ForwardItem] = []
+    text_length = 0
+    for item in items:
+        content = content_of(item)
+        if isinstance(content, str | UniMessage):
+            cleaned = content.strip("\n")
+            if not cleaned:
+                continue
+            if cleaned != content:
+                item = with_content(item, cleaned)
+            content = cleaned
+        length = len(UniMessage(content).extract_plain_text())
+        if chunk and (
+            text_length + length > MAX_FORWARD_TEXT_LEN
+            or len(chunk) >= MAX_FORWARD_NODES
+        ):
+            yield chunk
+            chunk = []
+            text_length = 0
+        chunk.append(item)
+        text_length += length
+    if chunk:
+        yield chunk
+
+
 class Renderer:
     """统一的渲染器，将解析结果转换为消息"""
 
@@ -275,18 +348,9 @@ class Renderer:
                 node_count += 1
                 if isinstance(seg, _ForwardText):
                     total_plain_len += seg.text_length
-                    processed_segs.extend(seg.split(SPLIT_THRESHOLD))
                 elif isinstance(seg, str):
-                    seg_len = len(seg)
-                    total_plain_len += seg_len
-                    if seg_len > SPLIT_THRESHOLD:
-                        processed_segs.extend(
-                            split_text_by_length_with_punct(seg, SPLIT_THRESHOLD)
-                        )
-                    else:
-                        processed_segs.append(seg)
-                else:
-                    processed_segs.append(seg)
+                    total_plain_len += len(seg)
+                processed_segs.extend(split_forward_content(seg, SPLIT_THRESHOLD))
 
             # 是否需要合并转发：
             # 1) 配置项 need_forward_contents
@@ -303,7 +367,7 @@ class Renderer:
                     for cont in media_contents
                 )
             )
-            need_forward = (
+            if (
                 force_forward
                 or pconfig.need_forward_contents
                 or total_plain_len > SPLIT_THRESHOLD
@@ -311,44 +375,16 @@ class Renderer:
                 or bool(forward_video_segs)
                 or summary_node is not None
                 or has_forward_attachments
-            )
-
-            if not need_forward:
-                # 不走合并转发：直接按节点顺序发出
-                yield UniMessage(processed_segs)
-            else:
+            ):
                 # 需要合并转发：根据平台限制按文本长度 / 节点数分批构造 forward
-                current_chunk: list[ForwardNodeInner] = []
-                current_text_len = 0
-
-                def flush_chunk() -> UniMessage[Any] | None:
-                    nonlocal current_text_len
-                    if not current_chunk:
-                        return None
-                    msg = UniMessage(UniHelper.construct_forward_message(current_chunk))
-                    current_chunk.clear()
-                    current_text_len = 0
-                    return msg
-
-                for seg in processed_segs:
-                    seg_text_len = len(seg) if isinstance(seg, str) else 0
-
-                    # 如果加上当前节点会超出单个 forward 限制，则先 flush 当前 chunk
-                    if current_chunk and (
-                        current_text_len + seg_text_len > MAX_FORWARD_TEXT_LEN
-                        or len(current_chunk) >= MAX_FORWARD_NODES
-                    ):
-                        msg = flush_chunk()
-                        if msg is not None:
-                            yield msg
-
-                    current_chunk.append(seg)
-                    current_text_len += seg_text_len
-
-                # 收尾：还有未发送的 chunk
-                last_msg = flush_chunk()
-                if last_msg is not None:
-                    yield last_msg
+                for chunk in pack_forward_items(
+                    processed_segs,
+                    content_of=lambda content: content,
+                    with_content=lambda _original, content: content,
+                ):
+                    yield UniMessage(UniHelper.construct_forward_message(chunk))
+            else:
+                yield UniMessage(processed_segs)
 
         for file_seg in direct_files:
             yield UniMessage(file_seg)
@@ -469,7 +505,7 @@ class Renderer:
         option_vote_total = item.option_vote_total
         parts = [f"【投票】{item.title or '投票'}"]
         parts.extend(
-            f"- {option.text}: {option.votes} 票 "
+            f"- {option.text}: {format_num(option.votes)} 票 "
             f"({item.option_percentage(option, option_vote_total):.1f}%)"
             for option in item.options
         )
@@ -477,7 +513,7 @@ class Renderer:
         if item.multiple:
             status.append("多选")
         if item.total_voters is not None:
-            status.append(f"{item.total_voters} 人参与")
+            status.append(f"{format_num(item.total_voters)} 人参与")
         if item.close_at:
             status.append(f"截止 {item.close_at}")
         parts.append(" · ".join(status))
@@ -911,22 +947,33 @@ class Renderer:
     async def cache_or_render_image(self, result: ParseResult):
         """获取缓存图片（支持跨重启复用）
 
-        以当前主题和解析结果 URL 为 key，在 cache_dir 下生成稳定文件名：
+        以当前主题、解析结果 URL 与上传前倍速为 key，在 cache_dir 下生成
+        稳定文件名：
         - 若文件已存在：直接使用，不再重新渲染
         - 若不存在：渲染并写入该文件
         """
         theme = get_theme()
         selected_theme = await self._resolve_theme()
+        render_format = pconfig.render_format
+        # 卡片上的时长与体积按倍速换算，倍速变了就得重渲染
         cache_key = (
             f"{RENDER_TEMPLATE_VERSION}:{selected_theme.id}:"
             f"{selected_theme.version}:{theme}:qr={pconfig.append_qrcode}:{result.url}"
+            f":{speedup_digest(result)}"
         )
-        file_name = f"{uuid.uuid5(uuid.NAMESPACE_URL, cache_key)}.webp"
+        file_name = f"{uuid.uuid5(uuid.NAMESPACE_URL, cache_key)}.{render_format}"
         cache_dir = await CacheManager.ensure_dir(CacheManager.RENDER)
         image_path = cache_dir / file_name
         logger.info(f"渲染主题: {selected_theme.name}")
         if not await image_path.exists():
-            image_raw = await FFmpeg.png_to_webp(
+            match render_format:
+                case "webp":
+                    compress_func = FFmpeg.png_to_webp
+                case "jpeg":
+                    compress_func = FFmpeg.png_to_jpeg
+                case _:
+                    raise ValueError
+            image_raw = await compress_func(
                 await self.render_image(
                     result,
                     theme=theme,

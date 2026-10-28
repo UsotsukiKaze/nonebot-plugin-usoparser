@@ -33,7 +33,7 @@ class KuaiShouParser(BaseParser):
     @handle("v.kuaishou", r"v\.kuaishou\.com/[A-Za-z\d._?%&+\-=/#]+")
     @handle("kuaishou", r"(?:www\.)?kuaishou\.com/[A-Za-z\d._?%&+\-=/#]+")
     @handle("chenzhongtech", r"(?:v\.m\.)?chenzhongtech\.com/fw/[A-Za-z\d._?%&+\-=/#]+")
-    @handle("m.gifshow.com", r"fw/photo/\d+")
+    @handle("m.gifshow.com", r"m\.gifshow\.com/fw/photo/[A-Za-z0-9]+")
     async def _parse_v_kuaishou(self, searched: MatchWithParams):
         url = f"https://{searched.url}"
         photo = await self._fetch_photo(url)
@@ -53,9 +53,9 @@ class KuaiShouParser(BaseParser):
 
     async def _fetch_photo(self, url: str) -> Photo:
         """获取页面并提取作品数据"""
-        real_url = await self.get_final_url(url, headers=self.ios_headers)
+        real_url = await self.get_final_url(url, headers=self.qq_headers)
         real_url = real_url.replace("/fw/long-video/", "/fw/photo/")
-        response = await self.httpx.get(real_url, headers=self.ios_headers)
+        response = await self.httpx.get(real_url, headers=self.qq_headers)
         response.raise_for_status()
 
         matched = INIT_PATTERN.search(response.text)

@@ -4,6 +4,7 @@ from msgspec import Struct, field
 import ujson
 
 from ...creator import ContentItem, Creator
+from ...download import DOWNLOADER
 
 
 class Addr(Struct):
@@ -23,6 +24,10 @@ class Addr(Struct):
         if file_id := self.file_id:
             return f"https://aweme.snssdk.com/aweme/v1/play/?video_id={self.uri}&file_id={file_id}"
         return f"https://aweme.snssdk.com/aweme/v1/play/?video_id={self.uri}"
+
+
+DOUYIN_RETRYABLE_HTTP_STATUSES = frozenset({460})
+"""抖音 CDN 会按出口位置拒绝访问（HTTP 460，Overseas traffic refused），可换线路重试"""
 
 
 class Statistics(Struct):
@@ -150,7 +155,14 @@ class Aweme(Struct):
                 elif image_video := image.video:
                     content.append(
                         Creator.live_photo(
-                            video_url=image_video.play_addr.url,
+                            video_url=DOWNLOADER.download_video(
+                                url=image_video.play_addr.url_list[0],
+                                fallback_urls=image_video.play_addr.url_list[1:],
+                                retry_http_statuses=DOUYIN_RETRYABLE_HTTP_STATUSES,
+                                ext_headers={"Referer": "https://www.douyin.com/"},
+                                cache_key=image_cache_key,
+                                cache_variant="motion",
+                            ),
                             image_url=image_video.cover.url_list[-1],
                             bgm_url=music_url,
                             cache_key=image_cache_key,
@@ -161,7 +173,13 @@ class Aweme(Struct):
         elif video := self.video:
             content.append(
                 Creator.video(
-                    url_or_task=video.play_addr.url,
+                    url_or_task=DOWNLOADER.download_video(
+                        url=video.play_addr.url_list[0],
+                        fallback_urls=video.play_addr.url_list[1:],
+                        retry_http_statuses=DOUYIN_RETRYABLE_HTTP_STATUSES,
+                        ext_headers={"Referer": "https://www.douyin.com/"},
+                        cache_key=aweme_cache_key,
+                    ),
                     cover_url=video.cover_original_scale.url_list[-1]
                     if video.cover_original_scale
                     else video.cover.url_list[-1],

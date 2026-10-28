@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import sys
+import subprocess
 import unittest
 from pathlib import Path
-
-import nonebot
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -15,11 +13,17 @@ sys.path.insert(0, str(ROOT / "src"))
 
 class PackageTests(unittest.TestCase):
     def test_nonebot_plugin_loads_without_ubot_manager(self) -> None:
-        nonebot.init()
-        plugin = nonebot.load_plugin("nonebot_plugin_usoparser")
-        self.assertIsNotNone(plugin)
-        self.assertIsNotNone(plugin.metadata)
-        self.assertEqual(plugin.metadata.name, "UsoParser")
+        # 真实插件加载独立执行，避免其它离线测试的服务替身污染结果。
+        result = subprocess.run(
+            [sys.executable, "-c", (
+                "import sys; sys.path.insert(0, 'src'); import nonebot; "
+                "nonebot.init(); plugin = nonebot.load_plugin('nonebot_plugin_usoparser'); "
+                "assert plugin is not None; assert plugin.metadata is not None; "
+                "assert plugin.metadata.name == 'UsoParser'"
+            )],
+            cwd=ROOT, capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_packaged_theme_assets_exist(self) -> None:
         base = ROOT / "src" / "nonebot_plugin_usoparser" / "render" / "templates"

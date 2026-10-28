@@ -8,7 +8,7 @@ from ...utils.format import (
     HTML_NEWLINE_TAGS,
     anchor_text,
     append_html_text,
-    clean_blank,
+    is_inside,
 )
 
 VIDEO_HEADER = {**DOWNLOADER.headers, "x-app-za": "OS=webplayer", "x-referer": ""}
@@ -120,8 +120,8 @@ async def _iter_media_and_text(soup: BeautifulSoup, content_type: str):
     skip_parent: Tag | None = None
 
     for element in soup.descendants:
-        if skip_parent:
-            if element in skip_parent.descendants:
+        if skip_parent is not None:
+            if is_inside(element, skip_parent):
                 continue
             else:
                 skip_parent = None
@@ -147,8 +147,7 @@ async def _iter_media_and_text(soup: BeautifulSoup, content_type: str):
                     yield graphic
 
         elif isinstance(element, NavigableString):
-            if text := clean_blank(str(element)):
-                yield text
+            yield str(element)
 
 
 async def _parse_video_box(tag: Tag, content_type: str):

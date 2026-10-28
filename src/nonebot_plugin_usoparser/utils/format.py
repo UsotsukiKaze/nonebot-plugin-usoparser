@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from collections.abc import Callable, MutableSequence, Sequence
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
 from typing import Final, Literal
 from urllib.parse import urljoin
@@ -7,7 +10,6 @@ from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 
 from ..constants import STICKER_CDN
-from ..creator import Creator
 from ..data import ContentItem
 
 DEFAULT_PLACEHOLDER_PATTERN: Final = re.compile(r"\[(?P<name>[^]]+)\]")
@@ -35,6 +37,9 @@ def replace_placeholder_to_sticker(
     """
     if not placeholder_pattern.search(text):
         return [text]
+
+    # creator 会导入 data，而 data 需要本模块的格式化函数，只能在函数内导入
+    from ..creator import Creator
 
     result: list[ContentItem] = []
     last_pos = 0
@@ -66,23 +71,51 @@ def replace_placeholder_to_sticker(
     return result
 
 
-def format_num(num: int | None) -> str | None:
-    """将数字格式化为 1.2万 的形式"""
+def is_inside(element: object, ancestor: Tag) -> bool:
+    """按节点身份判断包含关系，避免正文与引用文字相同而被误跳过。"""
+    return any(parent is ancestor for parent in getattr(element, "parents", ()))
+
+
+def format_num(num: int | float | str | None) -> str | None:
+    """统计数统一用 k/m/b，兼容接口已缩写的千、万、亿、w 等数值。"""
     if num is None:
         return None
-    return str(num) if num < 10000 else f"{num / 10000:.1f}万"
-
-
-def clean_blank(value: str) -> str | None:
-    """清理文本中的空白符号(包括换行)"""
-    text = re.sub(r"\s+", " ", value).strip()
-    return text or None
+    text = str(num).strip()
+    matched = re.fullmatch(
+        r"([<>≤≥~≈]?)\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*(千|万|亿|[kKmMbBwW])?\s*(\+?)",
+        text.replace(",", "").replace("，", ""),
+    )
+    if matched is None:
+        return text
+    prefix, digits, original_unit, suffix = matched.groups()
+    multipliers = {
+        "": 1, "千": 1000, "k": 1000,
+        "万": 10000, "w": 10000,
+        "m": 1000000, "亿": 100000000, "b": 1000000000,
+    }
+    try:
+        amount = Decimal(digits) * multipliers[(original_unit or "").lower()]
+        units = ((Decimal(1), ""), (Decimal(1000), "k"),
+                 (Decimal(1000000), "m"), (Decimal(1000000000), "b"))
+        index = max(i for i, (scale, _) in enumerate(units) if i == 0 or abs(amount) >= scale)
+        value = amount / units[index][0]
+        if index:
+            value = value.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+            if abs(value) >= 1000 and index < len(units) - 1:
+                index += 1
+                value = (amount / units[index][0]).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        formatted = format(value, "f")
+        if "." in formatted:
+            formatted = formatted.rstrip("0").rstrip(".")
+        return f"{prefix}{formatted}{units[index][1]}{suffix}"
+    except (InvalidOperation, OverflowError):
+        return text
 
 
 def append_html_text(
     result: MutableSequence[ContentItem], buffer: Sequence[str]
 ) -> None:
-    """合并连续 HTML 文本，并保留标签产生的换行"""
+    """合并连续 HTML 文本，保留正文空白与标签产生的换行"""
     if not buffer:
         return
     if normalized := "".join(buffer).strip():
@@ -90,7 +123,7 @@ def append_html_text(
 
 
 def html_to_text(root: BeautifulSoup | Tag | str) -> str:
-    """按 HTML 标签语义提取文本"""
+    """按 HTML 标签语义提取文本，保留文本节点内的空白"""
     parts: list[str] = []
     if isinstance(root, str):
         root = BeautifulSoup(root)
@@ -99,8 +132,7 @@ def html_to_text(root: BeautifulSoup | Tag | str) -> str:
             if element.name in HTML_NEWLINE_TAGS:
                 parts.append("\n")
         elif isinstance(element, NavigableString):
-            if text := clean_blank(str(element)):
-                parts.append(text)
+            parts.append(str(element))
     return "".join(parts).strip()
 
 
